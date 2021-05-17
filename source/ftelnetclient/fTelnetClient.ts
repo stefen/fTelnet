@@ -449,6 +449,9 @@ class fTelnetClient {
             case 'tcp':
                 this._Connection = new WebSocketConnection();
                 break;
+            case 'socketio':
+                this._Connection = new SocketIoConnection();
+                break;
             default:
                 this._Connection = new TelnetConnection(this._Crt);
                 this._Connection.LocalEcho = this._Options.LocalEcho;
