@@ -15,19 +15,23 @@ class SocketIoConnection extends WebSocketConnection {
     }
 
     public close(): void {
-        
+        if(this.SocketIOConnected) {
+            this.SocketIO.close();
+        }
     }
 
     public connect(hostname: string, port: number, urlPath: string, forceWss: boolean, proxyHostname?: string, proxyPort?: number, proxyPortSecure?: number): void {
         if(!io) {
             throw "socket.io-client not found"
         }
-        
+
         const host = `${forceWss ? 'wss' : 'ws'}://${hostname}:${port}/`;
 
         this.SocketIO = io(host);
         this.SocketIO.on("connect", 
             this.handleSocketIOConnect);  
+        this.SocketIO.on("disconnect", 
+            this.handleSocketIODisconnect);  
         this.SocketIO.on("data", 
             this.handleSocketIOData);
     }
@@ -37,6 +41,13 @@ class SocketIoConnection extends WebSocketConnection {
         this.SocketIOConnected = true;
         this.onconnect.trigger();
         this.SocketIO.emit("geometry", 80, 25);
+    }
+
+    protected handleSocketIODisconnect = () => {
+        if(this.SocketIOConnected) {
+            this.onclose.trigger();
+        }
+        this.SocketIOConnected = false;
     }
 
     protected handleSocketIOData = (data) => 
