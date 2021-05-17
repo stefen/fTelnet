@@ -3636,6 +3636,8 @@ var __extends = (this && this.__extends) || (function () {
         return extendStatics(d, b);
     };
     return function (d, b) {
+        if (typeof b !== "function" && b !== null)
+            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
         extendStatics(d, b);
         function __() { this.constructor = d; }
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
@@ -3702,6 +3704,82 @@ var RLoginNegotiationState;
     RLoginNegotiationState[RLoginNegotiationState["S1"] = 3] = "S1";
     RLoginNegotiationState[RLoginNegotiationState["SS"] = 4] = "SS";
 })(RLoginNegotiationState || (RLoginNegotiationState = {}));
+var io = window.io;
+var SocketIoConnection = (function (_super) {
+    __extends(SocketIoConnection, _super);
+    function SocketIoConnection() {
+        var _this = _super.call(this) || this;
+        _this.SocketIOConnected = false;
+        _this.handleSocketIOConnect = function () {
+            _this.SocketIOConnected = true;
+            _this.onconnect.trigger();
+            _this.SocketIO.emit("geometry", 80, 25);
+            _this.SocketIO.emit("terminal", "ansi");
+        };
+        _this.handleSocketIODisconnect = function () {
+            if (_this.SocketIOConnected) {
+                _this.onclose.trigger();
+            }
+            _this.SocketIOConnected = false;
+        };
+        _this.handleSocketIOData = function (data) {
+            var bytes = [];
+            for (var i_1 = 0; i_1 < data.length; ++i_1) {
+                var code = data.charCodeAt(i_1);
+                bytes = bytes.concat([code]);
+            }
+            data = bytes;
+            if (_this._InputBuffer.bytesAvailable === 0) {
+                _this._InputBuffer.clear();
+            }
+            var OldPosition = _this._InputBuffer.position;
+            _this._InputBuffer.position = _this._InputBuffer.length;
+            var Data = new ByteArray();
+            var i;
+            for (i = 0; i < data.length; i++) {
+                Data.writeByte(data[i]);
+            }
+            Data.position = 0;
+            _this.NegotiateInbound(Data);
+            _this._InputBuffer.position = OldPosition;
+            _this.ondata.trigger();
+        };
+        return _this;
+    }
+    Object.defineProperty(SocketIoConnection.prototype, "bytesAvailable", {
+        get: function () {
+            return this._InputBuffer.bytesAvailable;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    SocketIoConnection.prototype.close = function () {
+        if (this.SocketIOConnected) {
+            this.SocketIO.close();
+        }
+    };
+    SocketIoConnection.prototype.connect = function (hostname, port, urlPath, forceWss, proxyHostname, proxyPort, proxyPortSecure) {
+        if (!io) {
+            throw "socket.io-client not found";
+        }
+        var host = (forceWss ? 'wss' : 'ws') + "://" + hostname + ":" + port + "/";
+        this.SocketIO = io(host);
+        this.SocketIO.on("connect", this.handleSocketIOConnect);
+        this.SocketIO.on("disconnect", this.handleSocketIODisconnect);
+        this.SocketIO.on("data", this.handleSocketIOData);
+    };
+    Object.defineProperty(SocketIoConnection.prototype, "connected", {
+        get: function () {
+            return this.SocketIOConnected;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    SocketIoConnection.prototype.Send = function (data) {
+        this.SocketIO.emit('data', data);
+    };
+    return SocketIoConnection;
+}(WebSocketConnection));
 var TelnetCommand;
 (function (TelnetCommand) {
     TelnetCommand[TelnetCommand["EndSubnegotiation"] = 240] = "EndSubnegotiation";
@@ -8258,6 +8336,9 @@ var fTelnetClient = (function () {
                 break;
             case 'tcp':
                 this._Connection = new WebSocketConnection();
+                break;
+            case 'socketio':
+                this._Connection = new SocketIoConnection();
                 break;
             default:
                 this._Connection = new TelnetConnection(this._Crt);
