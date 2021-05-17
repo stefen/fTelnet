@@ -40,7 +40,9 @@ class SocketIoConnection extends WebSocketConnection {
     {
         this.SocketIOConnected = true;
         this.onconnect.trigger();
+        
         this.SocketIO.emit("geometry", 80, 25);
+        this.SocketIO.emit("terminal", "ansi");
     }
 
     protected handleSocketIODisconnect = () => {
