@@ -19,6 +19,10 @@ class SocketIoConnection extends WebSocketConnection {
     }
 
     public connect(hostname: string, port: number, urlPath: string, forceWss: boolean, proxyHostname?: string, proxyPort?: number, proxyPortSecure?: number): void {
+        if(!io) {
+            throw "socket.io-client not found"
+        }
+        
         const host = `${forceWss ? 'wss' : 'ws'}://${hostname}:${port}/`;
 
         this.SocketIO = io(host);
